@@ -14,6 +14,7 @@ class TaskViewModel: ObservableObject {
 
     @Published var newTaskTitle: String = ""
     @Published var items: [Item] = []
+    @Published var newTaskDate: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date())!
 
     init(context: NSManagedObjectContext) {
         self.viewContext = context
@@ -38,9 +39,12 @@ class TaskViewModel: ObservableObject {
         newItem.task_title = newTaskTitle
         newItem.is_completed = false
         newItem.task_id = UUID()
+        newItem.task_date = newTaskDate
 
         save()
+        scheduleNotification(for: newItem)
         newTaskTitle = ""
+        newTaskDate = Date()
     }
 
     func deleteItem(at offsets: IndexSet) {
@@ -66,6 +70,41 @@ class TaskViewModel: ObservableObject {
             fetchItems()
         } catch {
             print("Save error: \(error)")
+        }
+    }
+    
+    func requestNotificationPermissionIfNeeded() {
+        let hasAsked = UserDefaults.standard.bool(forKey: "hasAskedNotificationPermission")
+
+        if !hasAsked {
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                if granted {
+                    print("Bildirim izni verildi.")
+                } else if let error = error {
+                    print("Bildirim izni hatası: \(error.localizedDescription)")
+                }
+            }
+
+            UserDefaults.standard.set(true, forKey: "hasAskedNotificationPermission")
+        }
+    }
+    
+    func scheduleNotification(for item: Item) {
+        guard let date = item.task_date else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Task Reminder"
+        content.body = item.task_title ?? "You have a task to complete!"
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(date.timeIntervalSinceNow, 1), repeats: false)
+
+        let request = UNNotificationRequest(identifier: item.task_id?.uuidString ?? UUID().uuidString, content: content, trigger: trigger)
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Notification scheduling error: \(error.localizedDescription)")
+            }
         }
     }
 }

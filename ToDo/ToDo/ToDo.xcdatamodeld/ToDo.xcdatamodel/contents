@@ -2,6 +2,7 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23788.4" systemVersion="24F74" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="Item" representedClassName="Item" syncable="YES" codeGenerationType="class">
         <attribute name="is_completed" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="task_date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="task_id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="task_title" optional="YES" attributeType="String"/>
     </entity>

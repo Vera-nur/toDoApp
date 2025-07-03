@@ -23,6 +23,18 @@ struct AddTaskView: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                     .padding(.horizontal)
+                
+                HStack {
+                    Image(systemName: "calendar")
+                        .foregroundColor(.blue)
+                    
+                    DatePicker("", selection: $viewModel.newTaskDate, displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(10)
+                .padding(.horizontal)
 
                 HStack {
                     Button(action: {

@@ -88,6 +88,9 @@ struct ContentView: View {
                 .listStyle(.plain)
             }
         }
+        .onAppear {
+            viewModel.requestNotificationPermissionIfNeeded()
+        }
         .padding(.top)
         .background(Color(.systemGroupedBackground))
     }
