@@ -10,77 +10,63 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @StateObject private var viewModel: TaskViewModel
+    @State private var showSheet = false
 
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
+    init(context: NSManagedObjectContext) {
+        _viewModel = StateObject(wrappedValue: TaskViewModel(context: context))
+    }
 
     var body: some View {
-        NavigationView {
+        VStack {
+            HStack {
+                Text("My Tasks")
+                    .font(.largeTitle)
+                    .bold()
+                Spacer()
+                Button(action: {
+                    showSheet = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
+                }
+                .sheet(isPresented: $showSheet) {
+                    AddTaskView(viewModel: viewModel)
+                }
+            }
+            .padding()
+
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
+                ForEach(viewModel.items.filter { !($0.task_title?.isEmpty ?? true) }, id: \.objectID) { item in
+                    HStack {
+                        Button(action: {
+                            viewModel.toggleCompleted(for: item)
+                        }) {
+                            Image(systemName: item.is_completed ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(item.is_completed ? .green : .gray)
+                        }
+
+                        if let title = item.task_title {
+                            Text(title)
+                                .strikethrough(item.is_completed, color: .gray)
+                                .foregroundColor(item.is_completed ? .gray : .primary)
+                        }
+
+                        Spacer()
                     }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
                 }
-                .onDelete(perform: deleteItems)
+                .onDelete(perform: viewModel.deleteItem)
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-            Text("Select an item")
+            .listStyle(.plain)
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
+        .background(Color(.systemGroupedBackground))
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView(context: PersistenceController.preview.container.viewContext)
 }
