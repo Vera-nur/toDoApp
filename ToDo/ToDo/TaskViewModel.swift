@@ -14,7 +14,7 @@ class TaskViewModel: ObservableObject {
 
     @Published var newTaskTitle: String = ""
     @Published var items: [Item] = []
-    @Published var newTaskDate: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date())!
+    @Published var newTaskDate: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date()) ?? Date()
 
     init(context: NSManagedObjectContext) {
         self.viewContext = context
@@ -52,7 +52,12 @@ class TaskViewModel: ObservableObject {
 
         offsets.forEach { index in
             if items.indices.contains(index) {
-                viewContext.delete(items[index])
+                let item = items[index]
+
+                if let id = item.task_id?.uuidString {
+                    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+                }
+                viewContext.delete(item)
             }
         }
 

@@ -52,7 +52,7 @@ struct ContentView: View {
                 let completedCount = viewModel.items.filter { $0.is_completed }.count
                 let totalCount = viewModel.items.count
                 let progress = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0.0
-                
+
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Progress")
                         .font(.headline)
@@ -60,30 +60,161 @@ struct ContentView: View {
                         .tint(.green)
                 }
                 .padding(.horizontal)
-                
+
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+
+                let activeTodayTasks = viewModel.items.filter {
+                    !$0.is_completed &&
+                    ($0.task_date != nil && calendar.isDate($0.task_date!, inSameDayAs: today))
+                }
+
+                let activeFutureTasks = viewModel.items.filter {
+                    !$0.is_completed &&
+                    ($0.task_date != nil && $0.task_date! > today && !calendar.isDate($0.task_date!, inSameDayAs: today))
+                }
+
+                let completedTasks = viewModel.items.filter {
+                    $0.is_completed &&
+                    ($0.task_date != nil && calendar.isDate($0.task_date!, inSameDayAs: today))
+                }
+
                 List {
-                    ForEach(viewModel.items.filter { !($0.task_title?.isEmpty ?? true) }, id: \.objectID) { item in
-                        HStack {
-                            Button(action: {
-                                viewModel.toggleCompleted(for: item)
-                            }) {
-                                Image(systemName: item.is_completed ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(item.is_completed ? .green : .gray)
+                    Section(header: Text("Today")) {
+                        ForEach(activeTodayTasks, id: \.objectID) { item in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Button(action: {
+                                        viewModel.toggleCompleted(for: item)
+                                    }) {
+                                        Image(systemName: item.is_completed ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(item.is_completed ? .green : .gray)
+                                    }
+
+                                    if let title = item.task_title {
+                                        Text(title)
+                                            .strikethrough(item.is_completed, color: .gray)
+                                            .foregroundColor(item.is_completed ? .gray : .primary)
+                                            .font(.body)
+                                    }
+
+                                    Spacer()
+                                }
+
+                                if let date = item.task_date {
+                                    let formattedDate: String = {
+                                        let formatter = DateFormatter()
+                                        if Calendar.current.isDateInToday(date) {
+                                            formatter.dateFormat = "HH:mm"
+                                        } else {
+                                            formatter.dateFormat = "MM/dd"
+                                        }
+                                        return formatter.string(from: date)
+                                    }()
+                                    
+                                    Text(formattedDate)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .padding(.leading, 30)
+                                }
                             }
-                            
-                            if let title = item.task_title {
-                                Text(title)
-                                    .strikethrough(item.is_completed, color: .gray)
-                                    .foregroundColor(item.is_completed ? .gray : .primary)
-                            }
-                            
-                            Spacer()
+                            .padding(.vertical, 4)
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
+                        .onDelete(perform: viewModel.deleteItem)
                     }
-                    .onDelete(perform: viewModel.deleteItem)
+
+                    if !activeFutureTasks.isEmpty {
+                        Section(header: Text("Upcoming")) {
+                            ForEach(activeFutureTasks, id: \.objectID) { item in
+                                // repeat same card view as in Today section
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Button(action: {
+                                            viewModel.toggleCompleted(for: item)
+                                        }) {
+                                            Image(systemName: "circle")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.gray)
+                                        }
+
+                                        if let title = item.task_title {
+                                            Text(title)
+                                                .foregroundColor(.primary)
+                                                .font(.body)
+                                        }
+
+                                        Spacer()
+                                    }
+
+                                    if let date = item.task_date {
+                                        let formattedDate: String = {
+                                            let formatter = DateFormatter()
+                                            if Calendar.current.isDateInToday(date) {
+                                                formatter.dateFormat = "HH:mm"
+                                            } else {
+                                                formatter.dateFormat = "MM/dd"
+                                            }
+                                            return formatter.string(from: date)
+                                        }()
+                                        
+                                        Text(formattedDate)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .padding(.leading, 30)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .onDelete(perform: viewModel.deleteItem)
+                        }
+                    }
+
+                    if !completedTasks.isEmpty {
+                        Section(header: Text("Completed Today")) {
+                            ForEach(completedTasks, id: \.objectID) { item in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Button(action: {
+                                            viewModel.toggleCompleted(for: item)
+                                        }) {
+                                            Image(systemName: item.is_completed ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.green)
+                                        }
+
+                                        if let title = item.task_title {
+                                            Text(title)
+                                                .strikethrough(true, color: .gray)
+                                                .foregroundColor(.gray)
+                                                .font(.body)
+                                        }
+
+                                        Spacer()
+                                    }
+
+                                    if let date = item.task_date {
+                                        let formattedDate: String = {
+                                            let formatter = DateFormatter()
+                                            if Calendar.current.isDateInToday(date) {
+                                                formatter.dateFormat = "HH:mm"
+                                            } else {
+                                                formatter.dateFormat = "MM/dd"
+                                            }
+                                            return formatter.string(from: date)
+                                        }()
+                                        
+                                        Text(formattedDate)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .padding(.leading, 30)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .onDelete(perform: viewModel.deleteItem)
+                        }
+                    }
                 }
                 .listStyle(.plain)
             }
@@ -92,7 +223,7 @@ struct ContentView: View {
             viewModel.requestNotificationPermissionIfNeeded()
         }
         .padding(.top)
-        .background(Color(.systemGroupedBackground))
+        .background(Color(.systemGray6))
     }
 }
 
