@@ -75,10 +75,17 @@ class TaskViewModel: ObservableObject {
 
     func toggleCompleted(for item: Item) {
         item.is_completed.toggle()
+        
+        if item.is_completed {
+            item.completed_date = Date()
+        } else {
+            item.completed_date = nil
+        }
+
         save()
     }
 
-    private func save() {
+    func save() {
         do {
             try viewContext.save()
             fetchItems()

@@ -11,7 +11,6 @@ struct AddTaskView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TaskViewModel
     @State private var showPastDateAlert = false
-    @State private var setTime = false
 
     var body: some View {
         NavigationView {
@@ -26,7 +25,7 @@ struct AddTaskView: View {
                     .cornerRadius(10)
                     .padding(.horizontal)
 
-                TextField("Enter task description (optional)...", text: $viewModel.newTaskDescription)
+                TextField("Enter task description ", text: $viewModel.newTaskDescription)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
@@ -47,7 +46,7 @@ struct AddTaskView: View {
                 Toggle("Set Time", isOn: $viewModel.isTimeSet)
                     .padding(.horizontal)
 
-                if setTime {
+                if viewModel.isTimeSet {
                     HStack {
                         Image(systemName: "clock")
                             .foregroundColor(.blue)
@@ -73,12 +72,25 @@ struct AddTaskView: View {
                     }
 
                     Button(action: {
-                        if viewModel.newTaskDate < Date() {
-                            showPastDateAlert = true
+                        let now = Date()
+                        
+                        if viewModel.isTimeSet {
+                            if viewModel.newTaskDate <= now {
+                                showPastDateAlert = true
+                                return
+                            }
                         } else {
-                            viewModel.addItem()
-                            dismiss()
+                            let selectedDate = Calendar.current.startOfDay(for: viewModel.newTaskDate)
+                            let today = Calendar.current.startOfDay(for: now)
+
+                            if selectedDate < today {
+                                showPastDateAlert = true
+                                return
+                            }
                         }
+
+                        viewModel.addItem()
+                        dismiss()
                     }) {
                         Text("Save")
                             .frame(maxWidth: .infinity)

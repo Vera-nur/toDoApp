@@ -12,6 +12,8 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: TaskViewModel
     @State private var showSheet = false
+    @State private var selectedTask: Item? = nil
+    @State private var showDetailView = false
     
     init(context: NSManagedObjectContext) {
         _viewModel = StateObject(wrappedValue: TaskViewModel(context: context))
@@ -55,8 +57,7 @@ struct ContentView: View {
                     }
 
                     let completedTasks = viewModel.items.filter {
-                        $0.is_completed &&
-                        ($0.task_date != nil && calendar.isDate($0.task_date!, inSameDayAs: today))
+                        $0.is_completed && ($0.completed_date != nil && calendar.isDate($0.completed_date!, inSameDayAs: today))
                     }
                     
                     let completedTodayCount = completedTasks.count
@@ -86,10 +87,19 @@ struct ContentView: View {
                                                 .foregroundColor(item.is_completed ? .green : .gray)
                                         }
 
-                                        if let title = item.task_title {
+                                        if let title = item.task_title, let taskDate = item.task_date {
+                                            let now = Date()
+                                            let calendar = Calendar.current
+                                            let taskComponents = calendar.dateComponents([.hour, .minute], from: taskDate)
+                                            let isToday = calendar.isDate(taskDate, inSameDayAs: now)
+                                            let isTimeSet = (taskComponents.hour ?? 0) != 0 || (taskComponents.minute ?? 0) != 0
+                                            let isPast = taskDate < now
+                                            
+                                            let textColor: Color = item.is_completed ? .gray : (isTimeSet && isToday && isPast ? .red : .primary)
+
                                             Text(title)
                                                 .strikethrough(item.is_completed, color: .gray)
-                                                .foregroundColor(item.is_completed ? .gray : .primary)
+                                                .foregroundColor(textColor)
                                                 .font(.body)
                                         }
 
@@ -123,6 +133,10 @@ struct ContentView: View {
                                     }
                                 }
                                 .padding(.vertical, 4)
+                                .onTapGesture {
+                                        selectedTask = item
+                                        showDetailView = true
+                                    }
                             }
                             .onDelete(perform: viewModel.deleteItem)
                         }
@@ -130,7 +144,6 @@ struct ContentView: View {
                         if !activeFutureTasks.isEmpty {
                             Section(header: Text("Upcoming")) {
                                 ForEach(activeFutureTasks, id: \.objectID) { item in
-                                    // repeat same card view as in Today section
                                     VStack(alignment: .leading, spacing: 8) {
                                         HStack {
                                             Button(action: {
@@ -153,11 +166,7 @@ struct ContentView: View {
                                         if let date = item.task_date {
                                             let formattedDate: String = {
                                                 let formatter = DateFormatter()
-                                                if Calendar.current.isDateInToday(date) {
-                                                    formatter.dateFormat = "HH:mm"
-                                                } else {
-                                                    formatter.dateFormat = "MM/dd"
-                                                }
+                                                formatter.dateFormat = "MM/dd"
                                                 return formatter.string(from: date)
                                             }()
                                             
@@ -168,6 +177,10 @@ struct ContentView: View {
                                         }
                                     }
                                     .padding(.vertical, 4)
+                                    .onTapGesture {
+                                        selectedTask = item
+                                        showDetailView = true
+                                    }
                                 }
                                 .onDelete(perform: viewModel.deleteItem)
                             }
@@ -194,23 +207,6 @@ struct ContentView: View {
                                             }
 
                                             Spacer()
-                                        }
-
-                                        if let date = item.task_date {
-                                            let formattedDate: String = {
-                                                let formatter = DateFormatter()
-                                                if Calendar.current.isDateInToday(date) {
-                                                    formatter.dateFormat = "HH:mm"
-                                                } else {
-                                                    formatter.dateFormat = "MM/dd"
-                                                }
-                                                return formatter.string(from: date)
-                                            }()
-                                            
-                                            Text(formattedDate)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                                .padding(.leading, 30)
                                         }
                                     }
                                     .padding(.vertical, 4)
@@ -244,6 +240,18 @@ struct ContentView: View {
                 AddTaskView(viewModel: viewModel)
                     .presentationDetents([.medium,.large])
                     .presentationDragIndicator(.visible)
+            }
+        }
+        .sheet(isPresented: $showDetailView) {
+            if let selectedTask = selectedTask {
+                TaskDetailView(
+                    viewModel: viewModel,
+                    task: Binding(get: {
+                        selectedTask
+                    }, set: { updated in
+                        self.selectedTask = updated
+                    })
+                )
             }
         }
     }
