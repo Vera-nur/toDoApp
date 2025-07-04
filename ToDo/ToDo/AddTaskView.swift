@@ -10,12 +10,14 @@ import SwiftUI
 struct AddTaskView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TaskViewModel
+    @State private var showPastDateAlert = false
+    @State private var setTime = false
 
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
                 Text("Add New Task")
-                    .font(.title)
+                    .font(.title2)
                     .fontWeight(.semibold)
 
                 TextField("Enter task title...", text: $viewModel.newTaskTitle)
@@ -23,18 +25,41 @@ struct AddTaskView: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                     .padding(.horizontal)
-                
+
+                TextField("Enter task description (optional)...", text: $viewModel.newTaskDescription)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+
                 HStack {
                     Image(systemName: "calendar")
                         .foregroundColor(.blue)
                     
-                    DatePicker("", selection: $viewModel.newTaskDate, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker("", selection: $viewModel.newTaskDate, displayedComponents: .date)
                         .labelsHidden()
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(10)
                 .padding(.horizontal)
+
+                Toggle("Set Time", isOn: $viewModel.isTimeSet)
+                    .padding(.horizontal)
+
+                if setTime {
+                    HStack {
+                        Image(systemName: "clock")
+                            .foregroundColor(.blue)
+                        
+                        DatePicker("", selection: $viewModel.newTaskDate, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+                }
 
                 HStack {
                     Button(action: {
@@ -48,8 +73,12 @@ struct AddTaskView: View {
                     }
 
                     Button(action: {
-                        viewModel.addItem()
-                        dismiss()
+                        if viewModel.newTaskDate < Date() {
+                            showPastDateAlert = true
+                        } else {
+                            viewModel.addItem()
+                            dismiss()
+                        }
                     }) {
                         Text("Save")
                             .frame(maxWidth: .infinity)
@@ -64,8 +93,14 @@ struct AddTaskView: View {
 
                 Spacer()
             }
+            .alert(isPresented: $showPastDateAlert) {
+                Alert(
+                    title: Text("Invalid Date"),
+                    message: Text("Please select a future date and time for the task."),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
             .padding()
-            .navigationTitle("Add Task")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

@@ -13,9 +13,11 @@ class TaskViewModel: ObservableObject {
     private let viewContext: NSManagedObjectContext
 
     @Published var newTaskTitle: String = ""
+    @Published var newTaskDescription: String = ""
     @Published var items: [Item] = []
     @Published var newTaskDate: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date()) ?? Date()
-
+    @Published var isTimeSet: Bool = false
+    
     init(context: NSManagedObjectContext) {
         self.viewContext = context
         fetchItems()
@@ -37,14 +39,21 @@ class TaskViewModel: ObservableObject {
 
         let newItem = Item(context: viewContext)
         newItem.task_title = newTaskTitle
+        newItem.task_description = newTaskDescription
         newItem.is_completed = false
         newItem.task_id = UUID()
-        newItem.task_date = newTaskDate
+        if isTimeSet {
+                newItem.task_date = newTaskDate
+            } else {
+                let components = Calendar.current.dateComponents([.year, .month, .day], from: newTaskDate)
+                newItem.task_date = Calendar.current.date(from: components)
+            }
 
         save()
         scheduleNotification(for: newItem)
         newTaskTitle = ""
         newTaskDate = Date()
+        newTaskDescription = ""
     }
 
     func deleteItem(at offsets: IndexSet) {
@@ -112,4 +121,6 @@ class TaskViewModel: ObservableObject {
             }
         }
     }
+
+    
 }
