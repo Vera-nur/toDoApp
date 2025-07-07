@@ -77,9 +77,13 @@ class TaskViewModel: ObservableObject {
         item.is_completed.toggle()
         
         if item.is_completed {
+            if let id = item.task_id?.uuidString {
+                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+            }
             item.completed_date = Date()
         } else {
             item.completed_date = nil
+            scheduleNotification(for: item)
         }
 
         save()
@@ -111,22 +115,35 @@ class TaskViewModel: ObservableObject {
     }
     
     func scheduleNotification(for item: Item) {
-        guard let date = item.task_date else { return }
+        UNUserNotificationCenter.current().getPendingNotificationRequests { [weak self] requests in
+            guard let self = self else { return }
+            
+            if requests.count >= 64 {
+                print("Maximum pending notification limit reached.")
+                return
+            }
+            
+            guard let date = item.task_date else { return }
 
-        let content = UNMutableNotificationContent()
-        content.title = "Task Reminder"
-        content.body = item.task_title ?? "You have a task to complete!"
-        content.sound = .default
+            let content = UNMutableNotificationContent()
+            content.title = "Task Reminder"
+            content.body = item.task_title ?? "You have a task to complete!"
+            content.sound = .default
 
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(date.timeIntervalSinceNow, 1), repeats: false)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(date.timeIntervalSinceNow, 1), repeats: false)
 
-        let request = UNNotificationRequest(identifier: item.task_id?.uuidString ?? UUID().uuidString, content: content, trigger: trigger)
+            let request = UNNotificationRequest(identifier: item.task_id?.uuidString ?? UUID().uuidString, content: content, trigger: trigger)
 
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Notification scheduling error: \(error.localizedDescription)")
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    print("Notification scheduling error: \(error.localizedDescription)")
+                }
             }
         }
+    }
+    
+    func rollbackChanges() {
+        viewContext.rollback()
     }
 
     

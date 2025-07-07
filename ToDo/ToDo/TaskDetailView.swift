@@ -48,6 +48,7 @@ struct TaskDetailView: View {
 
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        viewModel.rollbackChanges()
                         dismiss()
                     }
                 }
